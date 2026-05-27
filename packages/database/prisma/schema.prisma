@@ -1,0 +1,125 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Enums ───────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Organizational Models ───────────────────────────
+
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  aiQuotaLimit Int     @default(100)
+  aiQuotaUsed  Int     @default(0)
+  createdAt   DateTime @default(now())
+
+  users   User[]
+  clients Client[]
+  aiJobs  AIJob[]
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String
+  role        UserRole @default(MEMBER)
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  tasks     Task[]
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  name        String
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id])
+  projects  Project[]
+  followUps FollowUp[]
+}
+
+// ─── Operational Entities ────────────────────────────
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  clientId  String
+  createdAt DateTime @default(now())
+
+  client   Client    @relation(fields: [clientId], references: [id])
+  meetings Meeting[]
+  tasks    Task[]
+}
+
+model Meeting {
+  id         String   @id @default(uuid())
+  projectId  String
+  rawContent String
+  summary    String?
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  projectId    String
+  title        String
+  description  String?
+  priority     TaskPriority @default(MEDIUM)
+  deadline     DateTime?
+  assignedToId String?
+  createdAt    DateTime     @default(now())
+
+  project    Project @relation(fields: [projectId], references: [id])
+  assignedTo User?   @relation(fields: [assignedToId], references: [id])
+}
+
+model FollowUp {
+  id        String   @id @default(uuid())
+  clientId  String
+  content   String
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+// ─── AI Audit System ─────────────────────────────────
+
+model AIJob {
+  id          String   @id @default(uuid())
+  workspaceId String
+  type        String
+  status      JobStatus @default(PENDING)
+  errorLog    String?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+}
