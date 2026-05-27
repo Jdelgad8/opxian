@@ -48,6 +48,7 @@ export const config = [
       'yarn-error.log*',
       '.DS_Store',
       '*.pem',
+      'docs',
     ],
   },
 ];
